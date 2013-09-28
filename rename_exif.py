@@ -18,40 +18,52 @@ def get_exif(fn):
 #see <a href="http://www.blog.pythonlibrary.org/2010/03/28/getting-photo-metadata-exif-using-python/">http://www.blog.pythonlibrary.org/2010/03/28/getting-photo-metadata-exif-using-python/</a>
     ret = {}
     i = Image.open(fn)
-    info = i._getexif()
     try:
+        info = i._getexif()
         for tag, value in info.items():
             decoded = TAGS.get(tag, tag)
             ret[decoded] = value
+        return ret
     except Exception, e:
         print 'Picture ', fn, ' has no tag, error is: ', e
+        return {}
     #print ret
-    return ret
 
 def sortPhotos(path):
-    PHOTOS = []
     EXTENSIONS =['.jpg','.jpeg', '.JPG', '.JPEG', '.MP4']
-    for EXTENSION in EXTENSIONS:
-        PHOTO = glob.glob(os.path.join(path, '*%s' % EXTENSION))
-        PHOTOS.extend(PHOTO)
+    for root, dirs, files in os.walk(path):
+        if not(root[-9:]=='.@__thumb'):
+            PHOTOS = []
+            for EXTENSION in EXTENSIONS:
+                PHOTO = glob.glob(os.path.join(root, '*%s' % EXTENSION))
+                PHOTOS.extend(PHOTO)
 
-    for PHOTO in PHOTOS:
-        #print PHOTO
-        if PHOTO[-4:] == '.MP4':
-            DATETIME = format_dateTime(modification_date(PHOTO))
-        elif not( get_exif(PHOTO) == {}):
-            try:
-                DATETIME = format_dateTime(get_exif(PHOTO)['DateTime'])
-            except:
-                DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeModified'])
-        FILE = os.path.split(PHOTO)[-1]
-        newname = os.path.join(path, "%s-%s" % (DATETIME, FILE))
-        if not(DATETIME == FILE[:13]):
-            print 'renaming ',  PHOTO, ' to ', newname
-            os.rename(PHOTO, newname)
-        else:
-            print 'already renamed ',  PHOTO, ' with date ', DATETIME
-            #os.rename(PHOTO, PHOTO.replace(DATETIME+'-'+DATETIME,DATETIME))
+            for PHOTO in PHOTOS:
+                #print PHOTO
+                if PHOTO[-4:] == '.MP4':
+                    DATETIME = format_dateTime(modification_date(PHOTO))
+                elif not( get_exif(PHOTO) == {}):
+                    try:
+                        DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeOriginal'])
+                    except:
+                        try:
+                            DATETIME = format_dateTime(get_exif(PHOTO)['DateTime'])
+                        except:
+                            #print 'DEBUG ', PHOTO, get_exif(PHOTO)
+                            try:
+                                DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeModified'])
+                            except:
+                                DATETIME = '' #format_dateTime(modification_date(PHOTO))
+                FILE = os.path.split(PHOTO)[-1]
+                newname = os.path.join(root, "%s-%s" % (DATETIME, FILE))
+                #newname = os.path.join(root, "%s-%s" % (DATETIME, FILE[14:]))
+                #newname = os.path.join(root, FILE[14:])
+                if True:#not(DATETIME == FILE[:13]):
+                    print 'renaming ',  PHOTO, ' to ', newname
+                    os.rename(PHOTO, newname)
+                else:
+                    print 'already renamed ',  PHOTO, ' with date ', DATETIME
+                    #os.rename(PHOTO, PHOTO.replace(DATETIME+'-'+DATETIME,DATETIME))
 
 if __name__=="__main__":
     PATH = sys.argv[1]
