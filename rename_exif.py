@@ -79,7 +79,7 @@ def sortPhotos(path):
                     os.rename(PHOTO, newname)
                 else:
                     pass
-                    #print 'already renamed ',  PHOTO, ' with date ', DATETIME
+                    print 'already renamed ',  PHOTO, ' with date ', DATETIME
                     #os.rename(PHOTO, PHOTO.replace(DATETIME+'-'+DATETIME,DATETIME))
 
 if __name__=="__main__":
