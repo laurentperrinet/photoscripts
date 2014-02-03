@@ -37,24 +37,26 @@ def get_exif(fn):
         return {}
     #print ret
 
+
+
 def sortPhotos(path):
-    EXTENSIONS_pict =['.jpg','.jpeg', '.JPG', '.JPEG']
-    EXTENSIONS_movie =['.MP4', '.mp4', '.MOV', '.mov']
-    #EXTENSIONS =['.jpg','.jpeg', '.JPG', '.JPEG', '.MP4', '.mp4', '.MOV', '.mov']
+    EXTENSIONS_pict =['jpg','jpeg', 'png']
+    EXTENSIONS_movie =['mp4', 'mov']
+    EXTENSIONS = []
+    for EXTENSIONS_ in [EXTENSIONS_pict, EXTENSIONS_movie]:
+        [EXTENSIONS.append(ext) for ext in EXTENSIONS_]
+        [EXTENSIONS.append(ext.upper()) for ext in EXTENSIONS_]
+    print 'DEBUG extensions = ', EXTENSIONS
     for root, dirs, files in os.walk(path):
         if not(root[-9:]=='.@__thumb'):
             PHOTOS = []
-            for EXTENSION in EXTENSIONS_pict:
-                PHOTO = glob.glob(os.path.join(root, '*%s' % EXTENSION))
-                PHOTOS.extend(PHOTO)
-
-            for EXTENSION in EXTENSIONS_movie:
+            for EXTENSION in EXTENSIONS:
                 PHOTO = glob.glob(os.path.join(root, '*%s' % EXTENSION))
                 PHOTOS.extend(PHOTO)
 
             for PHOTO in PHOTOS:
                 #print PHOTO
-                if PHOTO[-4:] in EXTENSIONS_movie:
+                if PHOTO.split('.')[-1].lower() in EXTENSIONS_movie:
                     DATETIME = get_movie_creation_date(PHOTO)
                     if DATETIME == '':
                         DATETIME = format_dateTime(modification_date(PHOTO))
@@ -83,7 +85,10 @@ def sortPhotos(path):
                     #os.rename(PHOTO, PHOTO.replace(DATETIME+'-'+DATETIME,DATETIME))
 
 if __name__=="__main__":
-    PATH = sys.argv[1]
-    print PATH
+    try:
+        PATH = sys.argv[1]
+    except:
+        PATH = ''
     if PATH == '': PATH = os.getcwd()
+    print 'Processing pictures in folder', PATH
     sortPhotos(PATH)
