@@ -43,7 +43,7 @@ def get_movie_creation_date(fn):
             return format_dateTime(datetime)
     return ''
 
-def sortPhotos(path):
+def sortPhotos(paths, dryrun):
     EXTENSIONS_pict =['jpg','jpeg', 'png']
     EXTENSIONS_movie =['mp4', 'mov']
     EXTENSIONS = []
@@ -51,55 +51,65 @@ def sortPhotos(path):
         [EXTENSIONS.append(ext) for ext in EXTENSIONS_]
         [EXTENSIONS.append(ext.upper()) for ext in EXTENSIONS_]
     print 'DEBUG extensions = ', EXTENSIONS
-    for root, dirs, files in os.walk(path):
-        if not(root[-9:]=='.@__thumb'):
-            PHOTOS = []
-            for EXTENSION in EXTENSIONS:
-                PHOTO = glob.glob(os.path.join(root, '*%s' % EXTENSION))
-                PHOTOS.extend(PHOTO)
+#     for root, dirs, files in os.walk(path):
+#         if not(root[-9:]=='.@__thumb'):
+#             PHOTOS = []
+#             for EXTENSION in EXTENSIONS:
+#                 PHOTO = glob.glob(os.path.join(root, '*%s' % EXTENSION))
+#                 PHOTOS.extend(PHOTO)
 
-            for PHOTO in PHOTOS:
-                DATETIME = None
-                # first process movies
-                if PHOTO.split('.')[-1].lower() in EXTENSIONS_movie:
-                    DATETIME = get_movie_creation_date(PHOTO)
-                    if DATETIME == '':
-                        DATETIME = format_dateTime(modification_date(PHOTO))
-                else: #elif not( get_exif(PHOTO) == {}):
-                    try: # trying first with SimpleCV
-                        DATETIME = format_dateTime(get_exif_modification_date(PHOTO))
-                    except:
+    for PHOTO in glob.glob(paths):#PHOTOS:
+        DATETIME = None
+        # first process movies
+        if PHOTO.split('.')[-1].lower() in EXTENSIONS_movie:
+            DATETIME = get_movie_creation_date(PHOTO)
+            if DATETIME == '':
+                DATETIME = format_dateTime(modification_date(PHOTO))
+        elif PHOTO.split('.')[-1].lower() in EXTENSIONS_pict: #else: #elif not( get_exif(PHOTO) == {}):
+            try: # trying first with SimpleCV
+                DATETIME = format_dateTime(get_exif_modification_date(PHOTO))
+            except:
 #                         print('DEBUG SimpleCV failed ')
-                        try: # trying with PIL
-                            DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeOriginal'])
-                        except:
-                            try: # trying out another tag
-                                DATETIME = format_dateTime(get_exif(PHOTO)['DateTime'])
-                            except: # yet another one
-                                try:
-                                    DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeModified'])
-                                except: # file's modification time 
-                                    try:
-                                        DATETIME = format_dateTime(modification_date(PHOTO))
-                                    except: # Giving up :-)
-                                        DATETIME = ''
-                FILE = os.path.split(PHOTO)[-1]
-                newname = os.path.join(root, "%s%s" % (DATETIME, FILE))
-                #newname = os.path.join(root, "%s-%s" % (DATETIME, FILE[14:]))
-                #newname = os.path.join(root, FILE[14:])
-                if not(DATETIME == FILE[:14]):
-                    print 'renaming ',  PHOTO, ' to ', newname
-                    os.rename(PHOTO, newname)
-                else:
-                    pass
-                    print 'already renamed ',  PHOTO, ' with date ', DATETIME
-                    #os.rename(PHOTO, PHOTO.replace(DATETIME+'-'+DATETIME,DATETIME))
+                try: # trying with PIL
+                    DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeOriginal'])
+                except:
+                    try: # trying out another tag
+                        DATETIME = format_dateTime(get_exif(PHOTO)['DateTime'])
+                    except: # yet another one
+                        try:
+                            DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeModified'])
+                        except: # file's modification time 
+                            try:
+                                DATETIME = format_dateTime(modification_date(PHOTO))
+                            except: # Giving up :-)
+                                DATETIME = ''
+        else:
+            print('File ', PHOTO, ' not in the EXTENSION list')
+        ROOT, FILE = os.path.split(PHOTO)
+        newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE))
+        #newname = os.path.join(root, "%s-%s" % (DATETIME, FILE[14:]))
+        #newname = os.path.join(root, FILE[14:])
+        if dryrun: print('DEBUG: dryrun mode')
+        if not(DATETIME == FILE[:14]):
+            print 'renaming ',  PHOTO, ' to ', newname
+            if dryrun: os.rename(PHOTO, newname)
+        else:
+            pass
+        print 'already renamed ',  PHOTO, ' with date ', DATETIME[:-1]
+            #os.rename(PHOTO, PHOTO.replace(DATETIME+'-'+DATETIME,DATETIME))
 
 if __name__=="__main__":
-    try:
-        PATH = sys.argv[1]
-    except:
-        PATH = ''
-    if PATH == '': PATH = os.getcwd()
-    print 'Processing pictures in folder', PATH
-    sortPhotos(PATH)
+    args = sys.argv[1:]
+
+    if not len(args):
+        print "Usage: python rename_exif.py [-d] 'pattern'"
+    else:
+        dryrun = args[0]
+        PATHS = args[1:]
+        if dryrun != '-d':
+            dryrun = ''
+            PATHS = args
+        print dryrun, PATHS
+        for PATH in PATHS:
+            print 'Processing pictures in folder', PATH
+            sortPhotos(PATH, dryrun=='-d')
