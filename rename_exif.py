@@ -10,18 +10,6 @@ def modification_date(filename):
     t = os.path.getmtime(filename)
     return str(datetime.datetime.fromtimestamp(t))
 
-def format_dateTime(UNFORMATTED):
-    DATE, TIME = UNFORMATTED.split()
-    return DATE[2:].replace('-','').replace(':','') + '-' + TIME.replace(':','')
-
-def get_movie_creation_date(fn):
-    for line in os.popen('ffprobe -loglevel quiet -show_entries stream_tags=creation_time -i ' + fn).readlines():
-        #print line
-        if line[:18] == 'TAG:creation_time=':
-            datetime = line[18:]
-            return format_dateTime(datetime)
-    return ''
-
 def get_exif(fn):
 #see <a href="http://www.blog.pythonlibrary.org/2010/03/28/getting-photo-metadata-exif-using-python/">http://www.blog.pythonlibrary.org/2010/03/28/getting-photo-metadata-exif-using-python/</a>
     ret = {}
@@ -37,7 +25,22 @@ def get_exif(fn):
         return {}
     #print ret
 
+def getexif_modification_date(filename, tag='EXIF DateTimeOriginal'):
+    from SimpleCV import EXIF
+    f = open(filename, 'rb')
+    return EXIF.process_file(f, stop_tag=tag)[tag].printable
 
+def format_dateTime(UNFORMATTED):
+    DATE, TIME = UNFORMATTED.split()
+    return DATE[2:].replace('-','').replace(':','') + '-' + TIME.replace(':','') + '-'
+
+def get_movie_creation_date(fn):
+    for line in os.popen('ffprobe -loglevel quiet -show_entries stream_tags=creation_time -i ' + fn).readlines():
+        #print line
+        if line[:18] == 'TAG:creation_time=':
+            datetime = line[18:]
+            return format_dateTime(datetime)
+    return ''
 
 def sortPhotos(path):
     EXTENSIONS_pict =['jpg','jpeg', 'png']
@@ -55,28 +58,30 @@ def sortPhotos(path):
                 PHOTOS.extend(PHOTO)
 
             for PHOTO in PHOTOS:
-                #print PHOTO
+                # first process movies
                 if PHOTO.split('.')[-1].lower() in EXTENSIONS_movie:
                     DATETIME = get_movie_creation_date(PHOTO)
                     if DATETIME == '':
                         DATETIME = format_dateTime(modification_date(PHOTO))
                 elif not( get_exif(PHOTO) == {}):
-                    try:
-                        DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeOriginal'])
+                    try: # trying first with SimpleCV
+                        DATETIME = format_dateTime(getexif_modification_date(PHOTO))
                     except:
-                        try:
-                            DATETIME = format_dateTime(get_exif(PHOTO)['DateTime'])
+                        try: # trying with PIL
+                            DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeOriginal'])
                         except:
-                            #print 'DEBUG ', PHOTO, get_exif(PHOTO)
-                            try:
-                                DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeModified'])
-                            except:
-                                DATETIME = '' #format_dateTime(modification_date(PHOTO))
+                            try: # trying out another tag
+                                DATETIME = format_dateTime(get_exif(PHOTO)['DateTime'])
+                            except: # yet another one
+                                try:
+                                    DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeModified'])
+                                except: # Giving up :-)
+                                    DATETIME = '' #format_dateTime(modification_date(PHOTO))
                 FILE = os.path.split(PHOTO)[-1]
-                newname = os.path.join(root, "%s-%s" % (DATETIME, FILE))
+                newname = os.path.join(root, "%s%s" % (DATETIME, FILE))
                 #newname = os.path.join(root, "%s-%s" % (DATETIME, FILE[14:]))
                 #newname = os.path.join(root, FILE[14:])
-                if not(DATETIME == FILE[:13]):
+                if not(DATETIME == FILE[:14]):
                     print 'renaming ',  PHOTO, ' to ', newname
                     os.rename(PHOTO, newname)
                 else:
