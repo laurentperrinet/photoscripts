@@ -59,7 +59,6 @@ def sortPhotos(paths, dryrun):
 #                 PHOTOS.extend(PHOTO)
 
     for PHOTO in glob.glob(paths):#PHOTOS:
-        DATETIME = None
         # first process movies
         if PHOTO.split('.')[-1].lower() in EXTENSIONS_movie:
             DATETIME = get_movie_creation_date(PHOTO)
@@ -82,21 +81,18 @@ def sortPhotos(paths, dryrun):
                             try:
                                 DATETIME = format_dateTime(modification_date(PHOTO))
                             except: # Giving up :-)
-                                DATETIME = ''
+                                DATETIME = None
         else:
             print('File ', PHOTO, ' not in the EXTENSION list')
+            DATETIME = None
         ROOT, FILE = os.path.split(PHOTO)
         newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE))
-        #newname = os.path.join(root, "%s-%s" % (DATETIME, FILE[14:]))
-        #newname = os.path.join(root, FILE[14:])
         if dryrun: print('DEBUG: dryrun mode')
-        if not(DATETIME == FILE[:14]):
+        if not(DATETIME == FILE[:14] or DATETIME == None):
             print 'renaming ',  PHOTO, ' to ', newname
-            if dryrun: os.rename(PHOTO, newname)
+            if not(dryrun): os.rename(PHOTO, newname)
         else:
-            pass
-        print 'already renamed ',  PHOTO, ' with date ', DATETIME[:-1]
-            #os.rename(PHOTO, PHOTO.replace(DATETIME+'-'+DATETIME,DATETIME))
+            if not(DATETIME == None): print 'already renamed ',  PHOTO, ' with date ', DATETIME[:-1]
 
 if __name__=="__main__":
     args = sys.argv[1:]
