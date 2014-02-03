@@ -1,5 +1,12 @@
 # exif_sort[January 2012] / martin gehrke [martin AT teamgehrke.com]
 # sorts jpg/jpegs into date folders based on exif data
+EXTENSIONS_pict =['jpg','jpeg', 'png']
+EXTENSIONS_movie =['mp4', 'mpg', 'mov']
+EXTENSIONS = []
+for EXTENSIONS_ in [EXTENSIONS_pict, EXTENSIONS_movie]:
+    [EXTENSIONS.append(ext) for ext in EXTENSIONS_]
+    [EXTENSIONS.append(ext.upper()) for ext in EXTENSIONS_]
+print 'DEBUG extensions = ', EXTENSIONS
 
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -44,13 +51,6 @@ def get_movie_creation_date(fn):
     return ''
 
 def sortPhotos(paths, dryrun):
-    EXTENSIONS_pict =['jpg','jpeg', 'png']
-    EXTENSIONS_movie =['mp4', 'mov']
-    EXTENSIONS = []
-    for EXTENSIONS_ in [EXTENSIONS_pict, EXTENSIONS_movie]:
-        [EXTENSIONS.append(ext) for ext in EXTENSIONS_]
-        [EXTENSIONS.append(ext.upper()) for ext in EXTENSIONS_]
-    print 'DEBUG extensions = ', EXTENSIONS
 #     for root, dirs, files in os.walk(path):
 #         if not(root[-9:]=='.@__thumb'):
 #             PHOTOS = []
@@ -105,7 +105,6 @@ if __name__=="__main__":
         if dryrun != '-d':
             dryrun = ''
             PATHS = args
-        print dryrun, PATHS
         for PATH in PATHS:
-            print 'Processing pictures in folder', PATH
+            print 'Processing path ', PATH
             sortPhotos(PATH, dryrun=='-d')
