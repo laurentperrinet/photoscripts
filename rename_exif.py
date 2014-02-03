@@ -25,10 +25,11 @@ def get_exif(fn):
         return {}
     #print ret
 
-def getexif_modification_date(filename, tag='EXIF DateTimeOriginal'):
+def get_exif_modification_date(filename, tag='EXIF DateTimeOriginal'):
     from SimpleCV import EXIF
-    f = open(filename, 'rb')
-    return EXIF.process_file(f, stop_tag=tag)[tag].printable
+    with open(filename, 'rb') as f:
+        UNFORMATTED = EXIF.process_file(f, stop_tag=tag)[tag].printable
+    return UNFORMATTED
 
 def format_dateTime(UNFORMATTED):
     DATE, TIME = UNFORMATTED.split()
@@ -58,15 +59,17 @@ def sortPhotos(path):
                 PHOTOS.extend(PHOTO)
 
             for PHOTO in PHOTOS:
+                DATETIME = None
                 # first process movies
                 if PHOTO.split('.')[-1].lower() in EXTENSIONS_movie:
                     DATETIME = get_movie_creation_date(PHOTO)
                     if DATETIME == '':
                         DATETIME = format_dateTime(modification_date(PHOTO))
-                elif not( get_exif(PHOTO) == {}):
+                else: #elif not( get_exif(PHOTO) == {}):
                     try: # trying first with SimpleCV
-                        DATETIME = format_dateTime(getexif_modification_date(PHOTO))
+                        DATETIME = format_dateTime(get_exif_modification_date(PHOTO))
                     except:
+#                         print('DEBUG SimpleCV failed ')
                         try: # trying with PIL
                             DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeOriginal'])
                         except:
@@ -75,8 +78,11 @@ def sortPhotos(path):
                             except: # yet another one
                                 try:
                                     DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeModified'])
-                                except: # Giving up :-)
-                                    DATETIME = '' #format_dateTime(modification_date(PHOTO))
+                                except: # file's modification time 
+                                    try:
+                                        DATETIME = format_dateTime(modification_date(PHOTO))
+                                    except: # Giving up :-)
+                                        DATETIME = ''
                 FILE = os.path.split(PHOTO)[-1]
                 newname = os.path.join(root, "%s%s" % (DATETIME, FILE))
                 #newname = os.path.join(root, "%s-%s" % (DATETIME, FILE[14:]))
