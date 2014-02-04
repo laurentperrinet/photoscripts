@@ -24,8 +24,9 @@ def rotate(PATH, CW=False):
     2 = 90CounterClockwise
     3 = 90Clockwise and Vertical Flip
     """
-    print 'DEBUG: # of transpose = ', str(1+int(CW))
-    cmd = 'ffmpeg  -i %s -v 0  -vf "transpose=%s"  -qscale 0 -y tmp.mov && mv tmp.mov %s' % (PATH, str(1 + int(CW)), PATH)
+#     print 'DEBUG: # of transpose = ', str(1+int(CW))
+    cmd = 'ffmpeg  -i "%s" -v 0  -vf "transpose=%s"  -qscale 0 -y tmp.mov && mv tmp.mov "%s"' % (PATH, str(1 + int(CW)), PATH)
+    print 'DEBUG: cmd = ', cmd
     try:
         os.system(cmd)
     except Exception, e:
@@ -49,5 +50,6 @@ if __name__=="__main__":
             CW = ''
             PATHS = args
         for PATH in PATHS:
-            print 'Processing file ', PATH
-            rotate(PATH, CW=='-c')
+            for filename in glob.glob(PATH):
+                print 'Processing file ', filename
+                rotate(filename, CW=='-c')
