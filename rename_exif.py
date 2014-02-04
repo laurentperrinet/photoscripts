@@ -1,3 +1,11 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+   rename_exif.py
+
+    A (simple) library to organize media files according to their creation date.
+
+"""
 # exif_sort[January 2012] / martin gehrke [martin AT teamgehrke.com]
 # sorts jpg/jpegs into date folders based on exif data
 EXTENSIONS_pict =['jpg','jpeg', 'png']
