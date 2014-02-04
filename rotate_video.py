@@ -7,39 +7,47 @@
 
 """
 
-
+#     cmd = """
+#     ORIGINAL_IFS=$IFS
+#     IFS=$'\n'
+#     ffmpeg  -i %s -v 0  -vf "transpose=%s"  -qscale 0 -y tmp.mov && mv tmp.mov %s
+#     IFS=$ORIGINAL_IFS
+#     """ % (PATH, str(int(CCW)), PATH)
+# 
 
 import sys, os, glob
 
-def rotate(PATH, CCW=='-c'):
-
-    cmd = """
-    ORIGINAL_IFS=$IFS
-    IFS=$'\n'
-    ffmpeg  -i %s -v 0  -vf "transpose=%s"  -qscale 0 -y tmp.mov && mv tmp.mov %s
-    IFS=$ORIGINAL_IFS
-    """ % (PATH, str(int(CCW)), PATH)
+def rotate(PATH, CW=False):
+    """
+    0 = 90CounterCLockwise and Vertical Flip (default)
+    1 = 90Clockwise
+    2 = 90CounterClockwise
+    3 = 90Clockwise and Vertical Flip
+    """
+    print 'DEBUG: # of transpose = ', str(1+int(CW))
+    cmd = 'ffmpeg  -i %s -v 0  -vf "transpose=%s"  -qscale 0 -y tmp.mov && mv tmp.mov %s' % (PATH, str(1 + int(CW)), PATH)
     try:
         os.system(cmd)
     except Exception, e:
         print 'Command ', cmd, ' failed, error is: ', e
 
-ORIGINAL_IFS=$IFS
-IFS=$'\n'
-ffmpeg  -i $1 -v 0  -vf "transpose=$2"  -qscale 0 -y tmp.mov && mv tmp.mov $1
-IFS=$ORIGINAL_IFS
-
 if __name__=="__main__":
     args = sys.argv[1:]
 
     if not len(args):
-        print "Usage: python rotate_video.py [-c] 'pattern'"
+        print("""
+        Usage: python rotate_video.py [-c] 'pattern'
+
+        the -c option is to turn video clockwise --- the default is
+        counter-clockwise.
+
+        """)
     else:
-        CCW = args[0]
+        CW = args[0]
         PATHS = args[1:]
-        if CCW != '-c':
-            CCW = ''
+        if CW != '-c':
+            CW = ''
             PATHS = args
         for PATH in PATHS:
             print 'Processing file ', PATH
-            rotate(PATH, CCW=='-c')
+            rotate(PATH, CW=='-c')
