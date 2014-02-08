@@ -24,8 +24,9 @@ def rotate(PATH, CW=False):
     2 = 90CounterClockwise
     3 = 90Clockwise and Vertical Flip
     """
+    EXT = PATH.split('.')[-1]
 #     print 'DEBUG: # of transpose = ', str(1+int(CW))
-    cmd = 'ffmpeg  -i "%s" -v 0  -vf "transpose=%s"  -qscale 0 -y tmp.mov && mv tmp.mov "%s"' % (PATH, str(1 + int(CW)), PATH)
+    cmd = 'ffmpeg  -i "%s" -v 0  -vf "transpose=%s"  -qscale 0 -y "%s-tmp.%s" && mv "%s-tmp.%s" "%s"' % (PATH, str(1 + int(CW)), PATH, EXT, PATH, EXT, PATH)
     print 'DEBUG: cmd = ', cmd
     try:
         os.system(cmd)
@@ -39,8 +40,8 @@ if __name__=="__main__":
         print("""
         Usage: python rotate_video.py [-c] 'pattern'
 
-        the -c option is to turn video clockwise --- the default is
-        counter-clockwise.
+        the -c option is to turn video counter-clockwise --- the default is
+        clockwise.
 
         """)
     else:
