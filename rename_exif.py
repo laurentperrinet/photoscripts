@@ -95,7 +95,7 @@ def sortPhotos(paths, dryrun):
             DATETIME = None
         ROOT, FILE = os.path.split(PHOTO)
         newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE))
-        if dryrun: print('DEBUG: dryrun mode')
+#         if dryrun: print('DEBUG: dryrun mode')
         if not(DATETIME == FILE[:14] or DATETIME == None):
             print 'renaming ',  PHOTO, ' to ', newname
             if not(dryrun): os.rename(PHOTO, newname)
@@ -113,6 +113,7 @@ if __name__=="__main__":
         if dryrun != '-d':
             dryrun = ''
             PATHS = args
+        if dryrun: print('DEBUG: dryrun mode')
         for PATH in PATHS:
-            print 'Processing path ', PATH
+#             print 'Processing path ', PATH
             sortPhotos(PATH, dryrun=='-d')
