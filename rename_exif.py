@@ -48,7 +48,7 @@ def get_exif_modification_date(filename, tag='EXIF DateTimeOriginal'):
 
 def format_dateTime(UNFORMATTED):
     DATE, TIME = UNFORMATTED.split()
-    return DATE[2:].replace('-','').replace(':','') + '-' + TIME.replace(':','') + '-'
+    return DATE.replace('-','').replace(':','') + '-' + TIME.replace(':','') + '-'
 
 def get_movie_creation_date(fn):
     for line in os.popen('ffprobe -loglevel quiet -show_entries stream_tags=creation_time -i ' + fn).readlines():
@@ -85,7 +85,7 @@ def sortPhotos(paths, dryrun):
                     except: # yet another one
                         try:
                             DATETIME = format_dateTime(get_exif(PHOTO)['DateTimeModified'])
-                        except: # file's modification time 
+                        except: # file's modification time
                             try:
                                 DATETIME = format_dateTime(modification_date(PHOTO))
                             except: # Giving up :-)
@@ -96,11 +96,18 @@ def sortPhotos(paths, dryrun):
         ROOT, FILE = os.path.split(PHOTO)
         newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE))
 #         if dryrun: print('DEBUG: dryrun mode')
-        if not(DATETIME == FILE[:14] or DATETIME == None):
-            print 'renaming ',  PHOTO, ' to ', newname
-            if not(dryrun): os.rename(PHOTO, newname)
-        else:
-            if not(DATETIME == None): print 'already renamed ',  PHOTO, ' with date ', DATETIME[:-1]
+        if not(DATETIME == None):
+            N = len(DATETIME)
+            if not(DATETIME == FILE[:N]):
+                print 'renaming ',  PHOTO, ' to ', newname
+                if not(dryrun): os.rename(PHOTO, newname)
+            elif not(DATETIME[2:] == FILE[:(N-2)]):
+                # HACK : we were before using a version which was a stripped
+                # ISO8601 (e.g. 14 instead of 2014)
+                print 'upgrading ',  PHOTO, ' to ', newname
+                if not(dryrun): os.rename(PHOTO, PHOTO.replace(DATETIME[2:], DATETIME))
+            else:
+                print 'already renamed ',  PHOTO, ' with date ', DATETIME[:-1]
 
 if __name__=="__main__":
     args = sys.argv[1:]
