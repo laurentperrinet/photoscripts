@@ -9,7 +9,7 @@
 # exif_sort[January 2012] / martin gehrke [martin AT teamgehrke.com]
 # sorts jpg/jpegs into date folders based on exif data
 EXTENSIONS_pict =['jpg','jpeg', 'png']
-EXTENSIONS_movie =['mp4', 'mpg', 'mov']
+EXTENSIONS_movie =['mp4', 'mpg', 'mov', '3gp']
 EXTENSIONS = []
 for EXTENSIONS_ in [EXTENSIONS_pict, EXTENSIONS_movie]:
     [EXTENSIONS.append(ext) for ext in EXTENSIONS_]
