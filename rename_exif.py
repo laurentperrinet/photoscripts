@@ -94,9 +94,12 @@ def sortPhotos(paths, dryrun):
             print('File ', PHOTO, ' not in the EXTENSION list')
             DATETIME = None
         ROOT, FILE = os.path.split(PHOTO)
-        newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE))
-#         if dryrun: print('DEBUG: dryrun mode')
         if not(DATETIME == None):
+            for sep in ['-', '_', '']: # TODO :test the following 3 lines
+                FILE = FILE.replace(sep + DATETIME, '') # remove existing occurences of DATETIME
+                FILE = FILE.replace(sep + DATETIME.replace('-', '_'), '')
+                FILE = FILE.replace(sep + DATETIME[:-1], '') # approximately 10 seconds is okay
+            newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE))
             N = len(DATETIME)
             if not(DATETIME == FILE[:N]):
                 print 'renaming ',  PHOTO, ' to ', newname
