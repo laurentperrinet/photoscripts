@@ -48,7 +48,7 @@ def get_exif_modification_date(filename, tag='EXIF DateTimeOriginal'):
 
 def format_dateTime(UNFORMATTED):
     DATE, TIME = UNFORMATTED.split()
-    return DATE.replace('-','').replace(':','') + '-' + TIME.replace(':','') + '-'
+    return DATE.replace(':','') + '-' + TIME.replace(':','') + '-'
 
 def get_movie_creation_date(fn):
     for line in os.popen('ffprobe -loglevel quiet -show_entries stream_tags=creation_time -i ' + fn).readlines():
@@ -101,21 +101,23 @@ def sortPhotos(paths, dryrun):
             for sep in ['-', '_', '', '']: # TODO :test the following 3 lines
                 FILE_ = FILE_.replace(sep + DATETIME, '') # remove existing occurences of DATETIME
                 FILE_ = FILE_.replace(sep + DATETIME[:-1], '') # remove existing occurences of DATETIME
+                FILE_ = FILE_.replace(sep + DATETIME[:10], '') # remove existing occurences of DATETIME
+                FILE_ = FILE_.replace(sep + DATETIME.replace('-', '')[:8], '') # remove existing occurences of DATETIME
                 FILE_ = FILE_.replace(sep + DATETIME[:-1].replace('-', '_'), '')
-                FILE_ = FILE_.replace(sep + DATETIME[:-1], '') # approximately 10 seconds is okay
-                print(DATETIME, FILE_)
+                FILE_ = FILE_.replace(sep + DATETIME.replace('-', ''), '')
+                FILE_ = FILE_.replace('--', '-')
             newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE_))
 
             N = len(DATETIME)
-            if not(DATETIME[:-1] == FILE[:(N-1)]):
-                print(DATETIME[:-1], FILE[:(N-1)])
+            if not(DATETIME[:-1] == FILE_[:(N-1)]):
+                # in this case, it is different so, we apply the change
                 print('renaming ',  PHOTO, ' to ', newname)
                 if not(dryrun): os.rename(PHOTO, newname)
-            elif not(DATETIME[2:] == FILE[:(N-2)]):
-                # HACK : we were before using a version which was a stripped
-                # ISO8601 (e.g. 14 instead of 2014)
+            elif False: # TODO (DATETIME.replace('-', '') == FILE[:N_]):
+                # HACK : we were before using a version which was missing the dashes
+                # now, we have a correct ISO8601 
                 print('upgrading ',  PHOTO, ' to ', newname)
-                if not(dryrun): os.rename(PHOTO, PHOTO.replace(DATETIME[2:], DATETIME))
+                if not(dryrun): os.rename(PHOTO, newname)
             else:
                 print('already renamed ',  PHOTO, ' with date ', DATETIME[:-1])
 
