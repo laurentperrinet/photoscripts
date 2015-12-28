@@ -9,12 +9,12 @@
 # exif_sort[January 2012] / martin gehrke [martin AT teamgehrke.com]
 # sorts jpg/jpegs into date folders based on exif data
 EXTENSIONS_pict =['jpg','jpeg', 'png']
-EXTENSIONS_movie =['mp4', 'mpg', 'mov', '3gp']
+EXTENSIONS_movie =['mp4', 'mpg', 'mov', '3gp', 'mts']
 EXTENSIONS = []
 for EXTENSIONS_ in [EXTENSIONS_pict, EXTENSIONS_movie]:
     [EXTENSIONS.append(ext) for ext in EXTENSIONS_]
     [EXTENSIONS.append(ext.upper()) for ext in EXTENSIONS_]
-print 'DEBUG extensions = ', EXTENSIONS
+print('DEBUG extensions = ', EXTENSIONS)
 
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -35,8 +35,8 @@ def get_exif(fn):
             decoded = TAGS.get(tag, tag)
             ret[decoded] = value
         return ret
-    except Exception, e:
-        print 'Picture ', fn, ' has no tag, error is: ', e
+    except Exception as e:
+        print('Picture ', fn, ' has no tag, error is: ', e)
         return {}
     #print ret
 
@@ -102,21 +102,26 @@ def sortPhotos(paths, dryrun):
             newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE))
             N = len(DATETIME)
             if not(DATETIME == FILE[:N]):
-                print 'renaming ',  PHOTO, ' to ', newname
+                print('renaming ',  PHOTO, ' to ', newname)
                 if not(dryrun): os.rename(PHOTO, newname)
             elif not(DATETIME[2:] == FILE[:(N-2)]):
                 # HACK : we were before using a version which was a stripped
                 # ISO8601 (e.g. 14 instead of 2014)
-                print 'upgrading ',  PHOTO, ' to ', newname
+                print('upgrading ',  PHOTO, ' to ', newname)
                 if not(dryrun): os.rename(PHOTO, PHOTO.replace(DATETIME[2:], DATETIME))
             else:
-                print 'already renamed ',  PHOTO, ' with date ', DATETIME[:-1]
+                print('already renamed ',  PHOTO, ' with date ', DATETIME[:-1])
 
 if __name__=="__main__":
     args = sys.argv[1:]
 
     if not len(args):
-        print "Usage: python rename_exif.py [-d] 'pattern'"
+        print("""
+        Usage: 
+            python rename_exif.py [-d] 'pattern'
+            
+            -d: dry-run mode
+            """)
     else:
         dryrun = args[0]
         PATHS = args[1:]
