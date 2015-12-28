@@ -66,7 +66,8 @@ def sortPhotos(paths, dryrun):
 #                 PHOTO = glob.glob(os.path.join(root, '*%s' % EXTENSION))
 #                 PHOTOS.extend(PHOTO)
 
-    for PHOTO in glob.glob(paths):#PHOTOS:
+    for PHOTO in glob.glob(paths):
+        # 1/ grab the creation date by heuristics
         # first process movies
         if PHOTO.split('.')[-1].lower() in EXTENSIONS_movie:
             DATETIME = get_movie_creation_date(PHOTO)
@@ -93,15 +94,21 @@ def sortPhotos(paths, dryrun):
         else:
             print('File ', PHOTO, ' not in the EXTENSION list')
             DATETIME = None
+        # 2/ prepend the creation date to the file name
         ROOT, FILE = os.path.split(PHOTO)
         if not(DATETIME == None):
-            for sep in ['-', '_', '']: # TODO :test the following 3 lines
-                FILE = FILE.replace(sep + DATETIME, '') # remove existing occurences of DATETIME
-                FILE = FILE.replace(sep + DATETIME.replace('-', '_'), '')
-                FILE = FILE.replace(sep + DATETIME[:-1], '') # approximately 10 seconds is okay
-            newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE))
+            FILE_ = FILE
+            for sep in ['-', '_', '', '']: # TODO :test the following 3 lines
+                FILE_ = FILE_.replace(sep + DATETIME, '') # remove existing occurences of DATETIME
+                FILE_ = FILE_.replace(sep + DATETIME[:-1], '') # remove existing occurences of DATETIME
+                FILE_ = FILE_.replace(sep + DATETIME[:-1].replace('-', '_'), '')
+                FILE_ = FILE_.replace(sep + DATETIME[:-1], '') # approximately 10 seconds is okay
+                print(DATETIME, FILE_)
+            newname = os.path.join(ROOT, "%s%s" % (DATETIME, FILE_))
+
             N = len(DATETIME)
-            if not(DATETIME == FILE[:N]):
+            if not(DATETIME[:-1] == FILE[:(N-1)]):
+                print(DATETIME[:-1], FILE[:(N-1)])
                 print('renaming ',  PHOTO, ' to ', newname)
                 if not(dryrun): os.rename(PHOTO, newname)
             elif not(DATETIME[2:] == FILE[:(N-2)]):
