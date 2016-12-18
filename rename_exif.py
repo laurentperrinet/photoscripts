@@ -114,6 +114,7 @@ def sortPhotos(paths, dryrun):
             if DEBUG: print(FILE_, DATETIME.replace('T', '_').replace('-', ''))
             FILE_ = FILE_.replace(DATETIME.replace('T', '-'), '')
             FILE_ = FILE_.replace(DATETIME.replace('T', '_').replace('-', ''), '')
+            FILE_ = FILE_.replace(DATETIME.replace('T', '_').replace('-', ''), '')
             for sep in ['-', '_', '', '']: # TODO :test the following 3 lines
                 FILE_ = FILE_.replace(sep + DATETIME, '') # remove existing occurences of DATETIME
                 FILE_ = FILE_.replace(sep + DATETIME[:-1], '') # remove existing occurences of DATETIME
