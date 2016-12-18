@@ -59,7 +59,7 @@ def format_dateTime(UNFORMATTED):
         DATE, TIME = UNFORMATTED.split()
     except ValueError:
         DATE, TIME = UNFORMATTED.split('T')
-    return DATE.replace(':','-') + 'T' + TIME[:8]#.replace(':', '')
+    return DATE.replace(':','-') + 'T' + TIME[:8].replace(':', '')
 
 def get_movie_creation_date(fn):
     for line in os.popen('ffprobe -loglevel quiet -show_format -i ' + fn).readlines():
@@ -111,8 +111,9 @@ def sortPhotos(paths, dryrun):
         ROOT, FILE = os.path.split(PHOTO)
         if not(DATETIME == None):
             FILE_ = FILE
-            if DEBUG: print(FILE_, DATETIME.replace('T', '_').replace('-', '').replace(':', ''))
-            FILE_ = FILE_.replace(DATETIME.replace('T', '_').replace('-', '').replace(':', ''), '')
+            if DEBUG: print(FILE_, DATETIME.replace('T', '_').replace('-', ''))
+            FILE_ = FILE_.replace(DATETIME.replace('T', '-'), '')
+            FILE_ = FILE_.replace(DATETIME.replace('T', '_').replace('-', ''), '')
             for sep in ['-', '_', '', '']: # TODO :test the following 3 lines
                 FILE_ = FILE_.replace(sep + DATETIME, '') # remove existing occurences of DATETIME
                 FILE_ = FILE_.replace(sep + DATETIME[:-1], '') # remove existing occurences of DATETIME
@@ -121,7 +122,7 @@ def sortPhotos(paths, dryrun):
                 FILE_ = FILE_.replace(sep + DATETIME[:-1].replace('-', '_'), '')
                 FILE_ = FILE_.replace(sep + DATETIME.replace('-', ''), '')
                 FILE_ = FILE_.replace('--', '-')
-            if DEBUG: print(FILE_.split('.')[0], DATETIME.replace('T', '_').replace('-', '').replace(':', ''))
+            if DEBUG: print(FILE_.split('.')[0], DATETIME.replace('T', '_').replace('-', ''))
             if len(FILE_.split('.')[0]) > 0:
                 SEP = '_'
             else:
@@ -129,8 +130,9 @@ def sortPhotos(paths, dryrun):
             newname = os.path.join(ROOT, "%s%s%s" % (DATETIME, SEP, FILE_))
             for sep in ['-', '_']:
                 newname = newname.replace(sep*2, sep)
-            newname = newname.replace(':', '')
-            
+            newname = newname.replace('-_', '_')
+            newname = newname.replace('_-', '_')
+
             N = len(DATETIME)
             if not(DATETIME[:-1] == FILE_[:(N-1)]):
                 # in this case, it is different so, we apply the change
