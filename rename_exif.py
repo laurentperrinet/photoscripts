@@ -122,8 +122,13 @@ def sortPhotos(paths, dryrun):
                 FILE_ = FILE_.replace(sep + DATETIME.replace('-', ''), '')
                 FILE_ = FILE_.replace('--', '-')
             if DEBUG: print(FILE_.split('.')[0], DATETIME.replace('T', '_').replace('-', '').replace(':', ''))
-            if len(FILE_.split('.')[0]) > 0: SEP = '_'
+            if len(FILE_.split('.')[0]) > 0:
+                SEP = '_'
+            else:
+                SEP = ''
             newname = os.path.join(ROOT, "%s%s%s" % (DATETIME, SEP, FILE_))
+            for sep in ['-', '_']:
+                newname = newname.replace(sep*2, sep)
 
             N = len(DATETIME)
             if not(DATETIME[:-1] == FILE_[:(N-1)]):
