@@ -3,7 +3,13 @@
 """
    rename_exif.py
 
-    A (simple) library to organize media files according to their creation date.
+A (simple) library to organize media files according to their creation date.
+
+The core idea is to rename pictures and movies in a folder by prepending the
+date in ISO 8601 format (that is, 2013-12-25 for the 25th of december of 2013).
+
+
+
 
 """
 # exif_sort[January 2012] / martin gehrke [martin AT teamgehrke.com]
@@ -115,7 +121,7 @@ def sortPhotos(paths, dryrun):
                 if not(dryrun): os.rename(PHOTO, newname)
             elif False: # TODO (DATETIME.replace('-', '') == FILE[:N_]):
                 # HACK : we were before using a version which was missing the dashes
-                # now, we have a correct ISO8601 
+                # now, we have a correct ISO8601
                 print('upgrading ',  PHOTO, ' to ', newname)
                 if not(dryrun): os.rename(PHOTO, newname)
             else:
@@ -126,9 +132,9 @@ if __name__=="__main__":
 
     if not len(args):
         print("""
-        Usage: 
+        Usage:
             python rename_exif.py [-d] 'pattern'
-            
+
             -d: dry-run mode
             """)
     else:
