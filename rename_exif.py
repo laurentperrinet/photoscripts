@@ -59,7 +59,7 @@ def format_dateTime(UNFORMATTED):
         DATE, TIME = UNFORMATTED.split()
     except ValueError:
         DATE, TIME = UNFORMATTED.split('T')
-    return DATE.replace(':','-') + 'T' + TIME[:8]# + '-'
+    return DATE.replace(':','-') + 'T' + TIME[:8]#.replace(':', '')
 
 def get_movie_creation_date(fn):
     for line in os.popen('ffprobe -loglevel quiet -show_format -i ' + fn).readlines():
@@ -129,7 +129,8 @@ def sortPhotos(paths, dryrun):
             newname = os.path.join(ROOT, "%s%s%s" % (DATETIME, SEP, FILE_))
             for sep in ['-', '_']:
                 newname = newname.replace(sep*2, sep)
-
+            newname = newname.replace(':', '')
+            
             N = len(DATETIME)
             if not(DATETIME[:-1] == FILE_[:(N-1)]):
                 # in this case, it is different so, we apply the change
