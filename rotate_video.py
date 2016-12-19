@@ -13,7 +13,7 @@
 #     ffmpeg  -i %s -v 0  -vf "transpose=%s"  -qscale 0 -y tmp.mov && mv tmp.mov %s
 #     IFS=$ORIGINAL_IFS
 #     """ % (PATH, str(int(CCW)), PATH)
-# 
+#
 
 import sys, os, glob
 
@@ -27,11 +27,11 @@ def rotate(PATH, CW=False):
     EXT = PATH.split('.')[-1]
 #     print 'DEBUG: # of transpose = ', str(1+int(CW))
     cmd = 'ffmpeg  -i "%s" -v 0  -vf "transpose=%s"  -qscale 0 -y "%s-tmp.%s" && mv "%s-tmp.%s" "%s"' % (PATH, str(1 + int(CW)), PATH, EXT, PATH, EXT, PATH)
-    print 'DEBUG: cmd = ', cmd
+    print ('DEBUG: cmd = ', cmd)
     try:
         os.system(cmd)
-    except Exception, e:
-        print 'Command ', cmd, ' failed, error is: ', e
+    except Exception as e:
+        print ('Command ', cmd, ' failed, error is: ', e)
 
 if __name__=="__main__":
     args = sys.argv[1:]
@@ -52,5 +52,5 @@ if __name__=="__main__":
             PATHS = args
         for PATH in PATHS:
             for filename in glob.glob(PATH):
-                print 'Processing file ', filename
+                print ('Processing file ', filename)
                 rotate(filename, CW=='-c')
