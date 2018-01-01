@@ -23,6 +23,10 @@ for EXTENSIONS_ in [EXTENSIONS_pict, EXTENSIONS_movie]:
     [EXTENSIONS.append(ext.upper()) for ext in EXTENSIONS_]
 if DEBUG: print('DEBUG extensions = ', EXTENSIONS)
 
+# some files come with some meta data
+EXTENSIONS_meta =['AAE']
+if DEBUG: print('DEBUG meta extensions = ', EXTENSIONS_meta)
+
 from PIL import Image
 from PIL.ExifTags import TAGS
 import sys, os, glob
@@ -139,6 +143,14 @@ def sortPhotos(paths, dryrun):
                 # in this case, it is different so, we apply the change
                 print('renaming ',  PHOTO, ' to ', newname)
                 if not(dryrun): os.rename(PHOTO, newname)
+
+                ext = PHOTO.split('.')[-1]
+                for ext_meta in EXTENSIONS_meta:
+                    if os.path.isfile(PHOTO.replace(ext, ext_meta)):
+                        print('meta  ',  ext, ext_meta)
+                        print('meta renaming ',  PHOTO.replace(ext, ext_meta), ' to ', newname.replace(ext, ext_meta))
+                        if not(dryrun): os.rename(PHOTO.replace(ext, ext_meta), newname.replace(ext, ext_meta))
+
             elif False: # TODO (DATETIME.replace('-', '') == FILE[:N_]):
                 # HACK : we were before using a version which was missing the dashes
                 # now, we have a correct ISO8601
