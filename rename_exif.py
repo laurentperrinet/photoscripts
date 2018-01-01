@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
    rename_exif.py
@@ -153,7 +153,7 @@ if __name__=="__main__":
     if not len(args):
         print("""
         Usage:
-            python rename_exif.py [-d] 'pattern'
+            python3 rename_exif.py [-d] 'pattern'
 
             -d: dry-run mode
             """)
