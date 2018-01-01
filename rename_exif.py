@@ -147,7 +147,7 @@ def sortPhotos(paths, dryrun):
                 ext = PHOTO.split('.')[-1]
                 for ext_meta in EXTENSIONS_meta:
                     if os.path.isfile(PHOTO.replace(ext, ext_meta)):
-                        print('meta  ',  ext, ext_meta)
+                        # print('meta  ',  ext, ext_meta)
                         print('meta renaming ',  PHOTO.replace(ext, ext_meta), ' to ', newname.replace(ext, ext_meta))
                         if not(dryrun): os.rename(PHOTO.replace(ext, ext_meta), newname.replace(ext, ext_meta))
 
