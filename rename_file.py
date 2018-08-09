@@ -11,17 +11,16 @@ DEBUG = False
 import sys, os, glob
 
 
-def rename(paths):
+def rename(paths, dryrun=True):
     for filename in glob.glob(paths):
         try:
             # 2017-07-30_1238340573
             # 2017-07-30_T12:38:34_0573Z
-            newname = filename[:13] + 'T' + filename[13:15] + ':' + filename[15:17] + ':' + filename[17:19] + 'Z'
+            newname = filename[:14] + 'T' + filename[14:16] + ':' + filename[16:18] + ':' + filename[18:20] + 'Z_' + filename[20:]
             print('renaming ', filename, ' to ', newname)
             if not(dryrun): os.rename(filename, newname)
         except Exception as e:
             print('renaming ', filename, ' failed with', e)
-
 
 if __name__=="__main__":
     args = sys.argv[1:]
