@@ -10,6 +10,8 @@ date in ISO 8601 format (that is, 2013-12-25 for the 25th of december of 2013).
 
 https://fr.wikipedia.org/wiki/ISO_8601
 
+e.g. 1977-04-22T06:00:00Z
+
 """
 DEBUG = True
 DEBUG = False
