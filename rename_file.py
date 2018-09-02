@@ -12,13 +12,23 @@ import sys, os, glob
 
 
 def rename(paths, dryrun=True):
-    for filename in glob.glob(paths):
+    for path in glob.glob(paths):
+        ROOT, filename = os.path.dirname(path), os.path.basename(path)
+        newname = filename.replace('Photo', '').replace('Vidéo', '')
+#         newname = newname.replace('/', '')
+#         newname = newname.replace(':', '')
+#         newname = newname.replace('TT', 'T')
+
         try:
             # 2017-07-30_1238340573
             # 2017-07-30_T12:38:34_0573Z
-            newname = filename[:14] + 'T' + filename[14:16] + ':' + filename[16:18] + ':' + filename[18:20] + 'Z_' + filename[20:]
-            print('renaming ', filename, ' to ', newname)
-            if not(dryrun): os.rename(filename, newname)
+            if not 'Z_' in newname:
+                newname = newname[:11] + 'T' + newname[11:17] + 'Z_' + newname[17:]
+#             if len(filename.split('Z_'))>2:
+#                 A, B, C = filename.split('Z_')
+#                 filename = A + B + 'Z_' + C
+            print('renaming \033[0;32m' + os.path.join(ROOT, filename) + '\033[00m to \033[0;32m' + os.path.join(ROOT, newname) + '\033[00m')
+            if not(dryrun): os.rename(os.path.join(ROOT, filename), os.path.join(ROOT, newname))
         except Exception as e:
             print('renaming ', filename, ' failed with', e)
 
