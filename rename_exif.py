@@ -162,6 +162,17 @@ def sortPhotos(paths, dryrun):
                 print('already renamed ',  PHOTO, ' with date ', DATETIME[:-1])
 
 if __name__=="__main__":
+
+    # import argparse
+    # # construct the argument parse and parse the arguments
+    # ap = argparse.ArgumentParser()
+    # ap.add_argument("-v", "--debug", action="store_true", default=False, required=False,
+    #     help="debug this script")
+    # ap.add_argument("-p", "--print", action="store_true", default=False, required=False,
+    #     help="just prints the command")
+    #
+    # args = vars(ap.parse_args())
+
     args = sys.argv[1:]
 
     if not len(args):
