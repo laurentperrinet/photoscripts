@@ -38,7 +38,7 @@ if __name__=="__main__":
     if not len(args):
         print("""
         Usage:
-            python3 rename_file.py [-d] 'pattern'
+            python rename_file.py [-d] 'pattern'
 
             -d: dry-run mode
             """)
