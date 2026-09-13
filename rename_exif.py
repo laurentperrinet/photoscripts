@@ -33,6 +33,7 @@ Usage:
 If no path is given, the script prints the usage message.
 """
 
+from pathlib import Path
 DEBUG = False
 
 # Supported file extensions (lowercase and uppercase)
@@ -49,9 +50,12 @@ EXTENSIONS_meta = ['AAE']
 
 from PIL import Image
 from PIL.ExifTags import TAGS
-import sys, os, glob
+import sys
+import glob
+import subprocess
 
 import datetime
+import re
 
 
 def modification_date(filename):
@@ -63,7 +67,9 @@ def modification_date(filename):
     Returns:
         str: Modification date as returned by datetime.fromtimestamp.
     """
-    t = os.path.getmtime(filename)
+    p = Path(filename)
+    t = p.stat().st_mtime
+    return str(datetime.datetime.fromtimestamp(t))
     return str(datetime.datetime.fromtimestamp(t))
 
 
@@ -122,10 +128,103 @@ def format_dateTime(UNFORMATTED):
         str: Date in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).
     """
     try:
-        DATE, TIME = UNFORMATTED.split()
-    except ValueError:
         DATE, TIME = UNFORMATTED.split('T')
-    return DATE.replace(':', '-') + 'T' + TIME[:8].replace(':', '')
+    except ValueError:
+        DATE, TIME = UNFORMATTED.split()
+    # Strip microseconds and timezone suffixes from time
+    if '.' in TIME:
+        TIME = TIME.split('.')[0]
+    if 'Z' in TIME:
+        TIME = TIME.split('Z')[0]
+    if '+' in TIME or (len(TIME) > 1 and TIME[0] == '-' and TIME[1] in '+-'):
+        # Handle timezone offset like +0300 or -0400
+        for i, c in enumerate(TIME):
+            if c in '+-' and i > 0:
+                TIME = TIME[:i]
+                break
+    # DATE: replace ':' with '-' (handles EXIF format 'YYYY:MM:DD')
+    # TIME: KEEP colons as-is for proper ISO 8601 time format 'HH:MM:SS'
+    return DATE.replace(':', '-') + 'T' + TIME
+
+def _extract_date_from_exif(fn):
+    """Extract date from EXIF data using PIL, trying tags in priority order."""
+    exif = get_exif(fn)
+    for tag in ['DateTimeOriginal', 'DateTime', 'DateTimeModified']:
+        try:
+            return format_dateTime(exif[tag])
+        except Exception:
+            continue
+    return ''
+
+
+def _get_creation_date(PHOTO):
+    """Get creation date from a file, trying appropriate sources based on type."""
+    ext = PHOTO.split('.')[-1].lower()
+    if ext in EXTENSIONS_movie:
+        DATETIME = get_movie_creation_date(PHOTO)
+        if not DATETIME:
+            DATETIME = format_dateTime(modification_date(PHOTO))
+        return DATETIME
+    elif ext in EXTENSIONS_pict:
+        try:
+            DATETIME = _extract_date_from_exif(PHOTO)
+        except Exception:
+            DATETIME = ''
+        if not DATETIME:
+            try:
+                DATETIME = format_dateTime(get_exif_modification_date(PHOTO))
+            except Exception:
+                DATETIME = ''
+        if not DATETIME:
+            DATETIME = format_dateTime(modification_date(PHOTO))
+        return DATETIME
+    else:
+        print('File ', PHOTO, ' not in the EXTENSION list')
+        return None
+
+
+def _clean_filename_date(filename, date_str):
+    """Remove existing date occurrences from filename stem.
+
+    Handles various ISO 8601 formats that may already be prepended to the filename.
+
+    Args:
+        filename (str): The original filename (just the stem, without extension).
+        date_str (str): The ISO 8601 date string to remove/clean.
+
+    Returns:
+        str: The cleaned filename stem with date occurrences removed.
+    """
+    # Remove the exact date string (ISO 8601 with T separator)
+    result = filename.replace(date_str, '')
+
+    # Remove just the date part (YYYY-MM-DD)
+    result = result.replace(date_str[:10], '')
+
+    # Remove time part variations (HH:MM:SS with different separators)
+    time_part = date_str[11:]  # HH:MM:SS
+    for sep in ['-', ':', '_']:
+        result = result.replace(sep.join(time_part.split(':')), '')
+
+    # Remove compact format YYYYMMDD_HHMMSS if present
+    compact_date = date_str.replace('-', '')[:8] + '_' + time_part.replace(':', '')
+    result = result.replace(compact_date, '')
+
+    # Also try with the compact format without underscore
+    compact_date2 = date_str.replace('-', '')[:8] + time_part.replace(':', '')
+    result = result.replace(compact_date2, '')
+
+    # Remove double separators and fix common patterns
+    for sep in ['-', '_']:
+        result = result.replace(sep + sep, sep)
+    result = result.replace('-_', '_')
+    result = result.replace('_-', '_')
+
+    # Strip leading separators
+    while result.startswith(('-', '_')):
+        result = result[1:]
+
+    return result
 
 
 def get_movie_creation_date(fn):
@@ -133,19 +232,25 @@ def get_movie_creation_date(fn):
 
     Looks for TAG:creation_time in the ffprobe output and formats it.
 
+    For MOV/MP4 files, this looks at the TAG:creation_time metadata tag.
+    If not available, falls back to file modification time.
+
     Args:
-        fn (str): Path to the movie file.
+        fn (str or Path): Path to the movie file.
 
     Returns:
         str: Date in ISO 8601 format, or empty string if not found.
     """
-    for line in os.popen('ffprobe -loglevel quiet -show_format -i ' + fn).readlines():
+    fn_str = str(fn)
+    result = subprocess.run(
+        ['ffprobe', '-loglevel', 'quiet', '-show_format', '-i', fn_str],
+        capture_output=True, text=True
+    )
+    for line in result.stdout.splitlines():
         if line[:18] == 'TAG:creation_time=':
             datetime_str = line[18:]
             return format_dateTime(datetime_str)
-    return ''
-
-
+    return 
 def sortPhotos(paths, dryrun, verbose=False):
     """Process files matching the given paths and rename them with their creation date.
 
@@ -153,7 +258,8 @@ def sortPhotos(paths, dryrun, verbose=False):
     ffprobe (movies), then prepends the date to the filename in ISO 8601 format.
 
     Handles fallback chains when primary date sources are unavailable, and
-    cleans existing date strings from filenames to avoid duplicates.
+    cleans existing date strings from filenames to avoid duplicates, including
+    the case where the date is already present in the filename.
 
     Args:
         paths (str or list): Single file pattern or list of file paths/folders.
@@ -165,98 +271,40 @@ def sortPhotos(paths, dryrun, verbose=False):
         global DEBUG
         DEBUG = True
     for PHOTO in glob.glob(paths):
-        # 1/ grab the creation date by heuristics
-        # first process movies
-        if PHOTO.split('.')[-1].lower() in EXTENSIONS_movie:
-            DATETIME = get_movie_creation_date(PHOTO)
-            if DATETIME == '':
-                DATETIME = format_dateTime(modification_date(PHOTO))
-        elif PHOTO.split('.')[-1].lower() in EXTENSIONS_pict:
-            try:  # trying first with SimpleCV
-                DATETIME = format_dateTime(get_exif_modification_date(PHOTO))
-            except Exception:
-                try:  # trying with PIL
-                    exif = get_exif(PHOTO)
-                    DATETIME = format_dateTime(exif['DateTimeOriginal'])
-                except Exception:
-                    try:  # trying out another tag
-                        DATETIME = format_dateTime(exif['DateTime'])
-                    except Exception:
-                        try:  # yet another one
-                            DATETIME = format_dateTime(exif['DateTimeModified'])
-                        except Exception:  # file's modification time
-                            try:
-                                DATETIME = format_dateTime(modification_date(PHOTO))
-                            except Exception:
-                                print('Giving up :-/ ')
-                                DATETIME = None
-        else:
-            print('File ', PHOTO, ' not in the EXTENSION list')
-            DATETIME = None
+        DATETIME = _get_creation_date(PHOTO)
+        if DATETIME is None:
+            continue
 
         if DEBUG:
             print(DATETIME)
 
-        # 2/ prepend the creation date to the file name
-        ROOT, FILE = os.path.split(PHOTO)
-        if not (DATETIME is None):
-            FILE_ = FILE
-            if DEBUG:
-                print(FILE_, DATETIME.replace('T', '_').replace('-', ''))
+        PHOTO_PATH = Path(PHOTO)
+        FILE = PHOTO_PATH.name
+        # Clean any existing date from the filename, then prepend the new date
+        clean_name = _clean_filename_date(FILE, DATETIME)
+        sep = '_' if clean_name else ''
 
-            # Remove any existing occurrence of the date from the filename
-            FILE_ = FILE_.replace(DATETIME.replace('T', '-'), '')
-            FILE_ = FILE_.replace(DATETIME.replace('T', '_').replace('-', ''), '')
-            FILE_ = FILE_.replace(DATETIME.replace('T', '_').replace('-', ''), '')
+        newname = newname = str(PHOTO_PATH.parent / f"{DATETIME}{sep}{FILE_}")
 
-            for sep in ['-', '_', '', '']:
-                FILE_ = FILE_.replace(sep + DATETIME, '')  # remove existing occurrences of DATETIME
-                FILE_ = FILE_.replace(sep + DATETIME[:-1], '')  # remove existing occurrences of DATETIME
-                FILE_ = FILE_.replace(sep + DATETIME[:10], '')  # remove existing occurrences of DATETIME
-                FILE_ = FILE_.replace(sep + DATETIME.replace('-', '')[:8], '')  # remove existing occurrences of DATETIME
-                FILE_ = FILE_.replace(sep + DATETIME[:-1].replace('-', '_'), '')
-                FILE_ = FILE_.replace(sep + DATETIME.replace('-', ''), '')
-                FILE_ = FILE_.replace('--', '-')
+        # Normalize double separators
+        for sep in ['-', '_']:
+            newname = newname.replace(sep * 2, sep)
+        newname = newname.replace('-_', '_')
+        newname = newname.replace('_-', '_')
 
-            if DEBUG:
-                print(FILE_.split('.')[0], DATETIME.replace('T', '_').replace('-', ''))
+        if DEBUG:
+            print('renaming ', PHOTO, ' to ', newname)
 
-            if len(FILE_.split('.')[0]) > 0:
-                SEP = '_'
-            else:
-                SEP = ''
+        if not dryrun:
+            PHOTO_PATH.rename(newname)
 
-            newname = os.path.join(ROOT, "%s%s%s" % (DATETIME, SEP, FILE_))
-
-            # Normalize double separators
-            for sep in ['-', '_']:
-                newname = newname.replace(sep*2, sep)
-            newname = newname.replace('-_', '_')
-            newname = newname.replace('_-', '_')
-
-            N = len(DATETIME)
-            if not (DATETIME[:-1] == FILE_[:(N-1)]):
-                # in this case, it is different so, we apply the change
-                print('renaming ', PHOTO, ' to ', newname)
-                if not dryrun:
-                    os.rename(PHOTO, newname)
-
-                ext = PHOTO.split('.')[-1]
-                for ext_meta in EXTENSIONS_meta:
-                    if os.path.isfile(PHOTO.replace(ext, ext_meta)):
-                        # print('meta  ',  ext, ext_meta)
-                        print('meta renaming ', PHOTO.replace(ext, ext_meta), ' to ', newname.replace(ext, ext_meta))
-                        if not dryrun:
-                            os.rename(PHOTO.replace(ext, ext_meta), newname.replace(ext, ext_meta))
-
-            elif False:  # TODO (DATETIME.replace('-', '') == FILE[:N_]):
-                # HACK: we were before using a version which was missing the dashes
-                # now, we have a correct ISO8601
-                print('upgrading ', PHOTO, ' to ', newname)
-                if not dryrun:
-                    os.rename(PHOTO, newname)
-            else:
-                print('already renamed ', PHOTO, ' with date ', DATETIME[:-1])
+            ext = PHOTO.split('.')[-1]
+            for ext_meta in EXTENSIONS_meta:
+                meta_path = Path(PHOTO).with_suffix(ext_meta)
+                if meta_path.is_file():
+                    if DEBUG:
+                        print('meta renaming ', metafile, ' to ', newname.replace(ext, ext_meta))
+                    meta_path.rename(str(newname.replace(ext, ext_meta)))
 
 
 if __name__ == "__main__":
