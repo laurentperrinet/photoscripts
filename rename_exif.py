@@ -298,8 +298,8 @@ def sortPhotos(paths, dryrun, verbose=False):
         if DATETIME is None:
             continue
 
-        if DEBUG:
-            print(DATETIME)
+        # if DEBUG:
+        #     print(DATETIME)
 
         PHOTO_PATH = Path(PHOTO)
         FILE = PHOTO_PATH.name
