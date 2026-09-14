@@ -47,7 +47,7 @@ for EXTENSIONS_ in [EXTENSIONS_pict, EXTENSIONS_movie]:
 # Meta file extensions (sidecar files)
 EXTENSIONS_meta = ['AAE']
 
-
+import os
 from PIL import Image
 from PIL.ExifTags import TAGS
 import sys
@@ -417,6 +417,13 @@ if __name__ == "__main__":
         help='print debug information'
     )
     parser.add_argument(
+        '--test',
+        action='store_true',
+        default=False,
+        required=False,
+        help='run TSV test suite from test_pairs.tsv and exit'
+    )
+    parser.add_argument(
         'paths',
         metavar='PATH',
         nargs='+',
@@ -425,15 +432,19 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Run TSV test if test_pairs.tsv exists
+    # Run TSV test if --test flag or test_pairs.tsv exists
     tsv_file = 'test_pairs.tsv'
-    if os.path.exists(tsv_file):
+    run_tsv_test = args.test or (not args.paths and os.path.exists(tsv_file))
+
+    if run_tsv_test:
+        if not os.path.exists(tsv_file):
+            print(f"⚠️  {tsv_file} not found")
+            exit(1)
         print(f"Running tests from {tsv_file}...")
         success = test_pairs_from_tsv(tsv_file)
         if not success:
             exit(1)
-    else:
-        print(f"⚠️  {tsv_file} not found, skipping TSV tests")
+        exit(0)
 
     for PATH in args.paths:
         sortPhotos(PATH, dryrun=(args.dry_run), verbose=args.verbose)
