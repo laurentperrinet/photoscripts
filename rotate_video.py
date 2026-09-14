@@ -1,10 +1,20 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-   rotate_video.py
+rotate_video.py
 
-    A (simple) library to rotate movies.
+A simple script to rotate videos using ffmpeg.
 
+Supported rotation modes:
+  0 = 90° counter-clockwise + vertical flip (default)
+  1 = 90° clockwise
+  2 = 90° counter-clockwise
+  3 = 90° clockwise + vertical flip
+
+Usage:
+    python3 rotate_video.py [-c] 'pattern'
+
+    -c: rotate counter-clockwise (default is clockwise)
 """
 
 #     cmd = """
@@ -18,11 +28,27 @@
 import sys, os, glob
 
 def rotate(PATH, CW=False):
-    """
-    0 = 90CounterCLockwise and Vertical Flip (default)
-    1 = 90Clockwise
-    2 = 90CounterClockwise
-    3 = 90Clockwise and Vertical Flip
+    """Rotate a video file using ffmpeg with specified transformation.
+
+    Supported rotation modes:
+      0 = 90° counter-clockwise + vertical flip (default)
+      1 = 90° clockwise
+      2 = 90° counter-clockwise
+      3 = 90° clockwise + vertical flip
+
+    Args:
+        PATH (str): Path to the video file to rotate.
+        CW (bool): If True, rotate counter-clockwise (default is False, i.e.
+            clockwise). Use -c flag when running from command line.
+
+    Example:
+        python3 rotate_video.py video.mp4          # clockwise rotation
+        python3 rotate_video.py -c video.mp4       # counter-clockwise rotation
+
+    Notes:
+        - The rotated video is saved as '{original}-tmp.{ext}' then moved
+          to replace the original.
+        - Uses ffmpeg's transpose filter with appropriate mode value.
     """
     EXT = PATH.split('.')[-1]
 #     print 'DEBUG: # of transpose = ', str(1+int(CW))
