@@ -65,11 +65,9 @@ def modification_date(filename):
         filename (str): Path to the file.
 
     Returns:
-        str: Modification date as returned by datetime.fromtimestamp.
+        str: Modification date in ISO 8601 format (YYYY-MM-DD HH:MM:SS).
     """
-    p = Path(filename)
-    t = p.stat().st_mtime
-    return str(datetime.datetime.fromtimestamp(t))
+    t = os.path.getmtime(filename)
     return str(datetime.datetime.fromtimestamp(t))
 
 
@@ -127,10 +125,23 @@ def format_dateTime(UNFORMATTED):
     Returns:
         str: Date in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).
     """
-    try:
-        DATE, TIME = UNFORMATTED.split('T')
-    except ValueError:
-        DATE, TIME = UNFORMATTED.split()
+    if 'T' in UNFORMATTED:
+        # T-separated format: YYYY-MM-DDTHH:MM:SS or with timezone
+        try:
+            DATE, TIME = UNFORMATTED.split('T', 1)
+        except ValueError:
+            DATE, TIME = UNFORMATTED.split('T', 1)
+    else:
+        # Space-separated format: YYYY MM DD HH MM SS
+        parts = UNFORMATTED.split()
+        if len(parts) >= 6:
+            # Take first 3 parts as date, last 3 as time
+            DATE = '-'.join(parts[:3])  # Join date parts with dashes
+            TIME = ':'.join(parts[3:6])  # Join time parts with colons
+        else:
+            # Fallback if not enough parts
+            DATE, TIME = UNFORMATTED.split(maxsplit=1) if len(parts) == 2 else (UNFORMATTED, '')
+    
     # Strip microseconds and timezone suffixes from time
     if '.' in TIME:
         TIME = TIME.split('.')[0]
@@ -220,9 +231,11 @@ def _clean_filename_date(filename, date_str):
     result = result.replace('-_', '_')
     result = result.replace('_-', '_')
 
-    # Strip leading separators
+    # Strip leading/trailing separators
     while result.startswith(('-', '_')):
         result = result[1:]
+    while result.endswith(('-', '_')):
+        result = result[:-1]
 
     return result
 
@@ -250,7 +263,8 @@ def get_movie_creation_date(fn):
         if line[:18] == 'TAG:creation_time=':
             datetime_str = line[18:]
             return format_dateTime(datetime_str)
-    return 
+    return ''
+
 def sortPhotos(paths, dryrun, verbose=False):
     """Process files matching the given paths and rename them with their creation date.
 
@@ -266,6 +280,15 @@ def sortPhotos(paths, dryrun, verbose=False):
         dryrun (bool): If True, only show what would be renamed without actually
             renaming files.
         verbose (bool): If True, print debug information. Defaults to False.
+
+    Example:
+        python3 rename_exif.py -d /path/to/photos
+
+    Notes:
+        - The script processes pictures (jpg, jpeg, png) using EXIF metadata first,
+          falling back to file modification time if EXIF is unavailable.
+        - Movies (mp4, mpg, mov, 3gp) use ffprobe to extract creation time.
+        - Existing date prefixes in filenames are cleaned to avoid duplicates.
     """
     if verbose:
         global DEBUG
@@ -284,7 +307,7 @@ def sortPhotos(paths, dryrun, verbose=False):
         clean_name = _clean_filename_date(FILE, DATETIME)
         sep = '_' if clean_name else ''
 
-        newname = newname = str(PHOTO_PATH.parent / f"{DATETIME}{sep}{FILE_}")
+        newname = str(PHOTO_PATH.parent / f"{DATETIME}{sep}{FILE}")
 
         # Normalize double separators
         for sep in ['-', '_']:
@@ -303,8 +326,73 @@ def sortPhotos(paths, dryrun, verbose=False):
                 meta_path = Path(PHOTO).with_suffix(ext_meta)
                 if meta_path.is_file():
                     if DEBUG:
-                        print('meta renaming ', metafile, ' to ', newname.replace(ext, ext_meta))
+                        print('meta renaming ', meta_path, ' to ', newname.replace(ext, ext_meta))
                     meta_path.rename(str(newname.replace(ext, ext_meta)))
+
+
+def test_pairs_from_tsv(tsv_path='test_pairs.tsv'):
+    """Test _clean_filename_date against all pairs in a TSV file.
+
+    Reads source/destination pairs from a TSV file (with header 'source\tdestination')
+    and verifies that _clean_filename_date produces the expected destination
+    from the source filename using the standard date format.
+
+    Args:
+        tsv_path: Path to the TSV test pairs file.
+
+    Returns:
+        True if all tests pass, False otherwise.
+    """
+    from rename_exif import _clean_filename_date
+    import os
+
+    passed = 0
+    failed = 0
+
+    with open(tsv_path, 'r') as f:
+        lines = f.readlines()
+
+    if not lines:
+        print("❌ TSV file is empty")
+        return False
+
+    # Skip header line
+    for i, line in enumerate(lines[1:], 1):
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split('\t')
+        if len(parts) != 2:
+            print(f"❌ Line {i}: Malformed entry (expected 2 tab-separated fields): {line}")
+            failed += 1
+            continue
+
+        source, dest = parts
+        stem, ext = os.path.splitext(source)
+
+        # Use the standard date format
+        date_str = '2023-12-25T10:30:00'
+        result = _clean_filename_date(stem, date_str) + ext
+
+        if result == dest:
+            passed += 1
+        else:
+            failed += 1
+            print(f"❌ Line {i}: Mismatch")
+            print(f"   Source:    {source}")
+            print(f"   Expected:  {dest}")
+            print(f"   Got:       {result}")
+            print()
+
+    total = passed + failed
+    print(f"\n{'='*50}")
+    print(f"Test Results: {passed}/{total} passed, {failed}/{total} failed")
+    if failed == 0:
+        print("✅ All tests passed!")
+        return True
+    else:
+        print(f"❌ {failed} test(s) failed")
+        return False
 
 
 if __name__ == "__main__":
@@ -336,6 +424,16 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    # Run TSV test if test_pairs.tsv exists
+    tsv_file = 'test_pairs.tsv'
+    if os.path.exists(tsv_file):
+        print(f"Running tests from {tsv_file}...")
+        success = test_pairs_from_tsv(tsv_file)
+        if not success:
+            exit(1)
+    else:
+        print(f"⚠️  {tsv_file} not found, skipping TSV tests")
 
     for PATH in args.paths:
         sortPhotos(PATH, dryrun=(args.dry_run), verbose=args.verbose)
