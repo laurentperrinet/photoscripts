@@ -19,7 +19,8 @@ Files are processed by:
 """
 DEBUG = True
 DEBUG = False
-import sys, os, glob
+import sys
+from pathlib import Path
 
 
 def rename(paths, dryrun=True):
@@ -43,8 +44,8 @@ def rename(paths, dryrun=True):
     Returns:
         None: Prints rename operations to stdout.
     """
-    for path in glob.glob(paths):
-        ROOT, filename = os.path.dirname(path), os.path.basename(path)
+    for path in Path().glob(paths):
+        ROOT, filename = Path(path).parent, Path(path).name
         newname = filename.replace('Photo', '').replace('Vidéo', '')
 
         try:
@@ -55,8 +56,8 @@ def rename(paths, dryrun=True):
 #             if len(filename.split('Z_'))>2:
 #                 A, B, C = filename.split('Z_')
 #                 filename = A + B + 'Z_' + C
-            print('renaming \033[0;32m' + os.path.join(ROOT, filename) + '\033[00m to \033[0;32m' + os.path.join(ROOT, newname) + '\033[00m')
-            if not(dryrun): os.rename(os.path.join(ROOT, filename), os.path.join(ROOT, newname))
+            print('renaming \033[0;32m' + str(Path(ROOT) / filename) + '\033[00m to \033[0;32m' + str(Path(ROOT) / newname) + '\033[00m')
+            if not(dryrun): os.rename(str(Path(ROOT) / filename), str(Path(ROOT) / newname))
         except Exception as e:
             print('renaming ', filename, ' failed with', e)
 

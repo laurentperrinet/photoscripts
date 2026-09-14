@@ -25,7 +25,8 @@ Usage:
 #     """ % (PATH, str(int(CCW)), PATH)
 #
 
-import sys, os, glob
+import sys
+from pathlib import Path
 
 def rotate(PATH, CW=False):
     """Rotate a video file using ffmpeg with specified transformation.
@@ -77,6 +78,6 @@ if __name__=="__main__":
             CW = ''
             PATHS = args
         for PATH in PATHS:
-            for filename in glob.glob(PATH):
+            for filename in Path().glob(PATH):
                 print ('Processing file ', filename)
                 rotate(filename, CW=='-c')

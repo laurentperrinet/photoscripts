@@ -288,7 +288,7 @@ def sortPhotos(paths, dryrun, verbose=False):
     if verbose:
         global DEBUG
         DEBUG = True
-    for PHOTO in glob.glob(paths):
+    for PHOTO in Path().glob(paths):
         DATETIME = _get_creation_date(PHOTO)
         if DATETIME is None:
             continue
