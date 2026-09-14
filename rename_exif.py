@@ -307,7 +307,8 @@ def sortPhotos(paths, dryrun, verbose=False):
         newname = newname.replace('_-', '_')
 
         if DEBUG:
-            print('renaming ', PHOTO_PATH.name, ' to ', newname)
+            print(newname,  PHOTO_PATH.name, ' \t')
+            # print('renaming ', PHOTO_PATH.name, ' to ', newname)
 
         if not dryrun:
             PHOTO_PATH.rename(PHOTO_PATH.parent / newname)
