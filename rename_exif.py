@@ -14,7 +14,6 @@ e.g. 1977-04-22T06:00:00Z
 
 Supported picture extensions: jpg, jpeg, png
 Supported movie extensions: mp4, mpg, mov, 3gp
-Meta/AAC extensions: AAE
 
 The date extraction priority order is:
 1. EXIF DateTimeOriginal (primary)
@@ -44,18 +43,14 @@ for EXTENSIONS_ in [EXTENSIONS_pict, EXTENSIONS_movie]:
     [EXTENSIONS.append(ext) for ext in EXTENSIONS_]
     [EXTENSIONS.append(ext.upper()) for ext in EXTENSIONS_]
 
-# Meta file extensions (sidecar files)
-EXTENSIONS_meta = ['AAE']
 
 import os
 from PIL import Image
 from PIL.ExifTags import TAGS
-import sys
 import glob
 import subprocess
 
 import datetime
-import re
 
 
 def modification_date(filename):
@@ -298,16 +293,12 @@ def sortPhotos(paths, dryrun, verbose=False):
         if DATETIME is None:
             continue
 
-        # if DEBUG:
-        #     print(DATETIME)
-
         PHOTO_PATH = Path(PHOTO)
-        FILE = PHOTO_PATH.name
         # Clean any existing date from the filename, then prepend the new date
-        clean_name = _clean_filename_date(FILE, DATETIME)
+        clean_name = _clean_filename_date(PHOTO_PATH.name, DATETIME)
         sep = '_' if clean_name else ''
 
-        newname = str(PHOTO_PATH.parent / f"{DATETIME}{sep}{FILE}")
+        newname = f"{DATETIME}{sep}{PHOTO_PATH.name}"
 
         # Normalize double separators
         for sep in ['-', '_']:
@@ -316,19 +307,10 @@ def sortPhotos(paths, dryrun, verbose=False):
         newname = newname.replace('_-', '_')
 
         if DEBUG:
-            print('renaming ', PHOTO, ' to ', newname)
+            print('renaming ', PHOTO_PATH.name, ' to ', newname)
 
         if not dryrun:
-            PHOTO_PATH.rename(newname)
-
-            ext = PHOTO.split('.')[-1]
-            for ext_meta in EXTENSIONS_meta:
-                meta_path = Path(PHOTO).with_suffix(ext_meta)
-                if meta_path.is_file():
-                    if DEBUG:
-                        print('meta renaming ', meta_path, ' to ', newname.replace(ext, ext_meta))
-                    meta_path.rename(str(newname.replace(ext, ext_meta)))
-
+            PHOTO_PATH.rename(PHOTO_PATH.parent / newname)
 
 def test_pairs_from_tsv(tsv_path='test_pairs.tsv'):
     """Test _clean_filename_date against all pairs in a TSV file.
@@ -426,7 +408,7 @@ if __name__ == "__main__":
     parser.add_argument(
         'paths',
         metavar='PATH',
-        nargs='+',
+        nargs='*',
         help='file patterns or folder paths to process'
     )
 
