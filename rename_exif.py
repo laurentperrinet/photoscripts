@@ -261,7 +261,7 @@ def sortPhotos(paths, dryrun, verbose=False, clean_mode=False, compact_mode=Fals
 
         newname = str(PHOTO_PATH.parent / new_filename)
 
-        if DEBUG:
+        if DEBUG and PHOTO_PATH.name != new_filename:
             print(f"📅 {DATETIME} | 🔄 {PHOTO_PATH.name} ➔ {new_filename}")
 
         if not dryrun:
