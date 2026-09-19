@@ -231,7 +231,15 @@ def sortPhotos(paths, dryrun, verbose=False, clean_mode=False, compact_mode=Fals
     if verbose:
         global DEBUG
         DEBUG = True
-    for PHOTO in glob.glob(paths):
+    # Expand paths: if any matched path is a directory, get all files inside it
+    expanded_paths = []
+    for p in glob.glob(paths):
+        if os.path.isdir(p):
+            expanded_paths.extend(glob.glob(os.path.join(p, '*')))
+        else:
+            expanded_paths.append(p)
+
+    for PHOTO in expanded_paths:
         DATETIME = _get_creation_date(PHOTO)
         if DATETIME is None:
             continue
