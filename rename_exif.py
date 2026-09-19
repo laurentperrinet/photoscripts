@@ -14,6 +14,7 @@ e.g. 1977-04-22T06:00:00Z
 
 Supported picture extensions: jpg, jpeg, png
 Supported movie extensions: mp4, mpg, mov, 3gp
+Meta/AAC extensions: AAE
 
 The date extraction priority order is:
 1. EXIF DateTimeOriginal (primary)
@@ -43,14 +44,15 @@ for EXTENSIONS_ in [EXTENSIONS_pict, EXTENSIONS_movie]:
     [EXTENSIONS.append(ext) for ext in EXTENSIONS_]
     [EXTENSIONS.append(ext.upper()) for ext in EXTENSIONS_]
 
-
 import os
 from PIL import Image
 from PIL.ExifTags import TAGS
+import sys
 import glob
 import subprocess
 
 import datetime
+import re
 
 
 def modification_date(filename):
@@ -136,7 +138,7 @@ def format_dateTime(UNFORMATTED):
         else:
             # Fallback if not enough parts
             DATE, TIME = UNFORMATTED.split(maxsplit=1) if len(parts) == 2 else (UNFORMATTED, '')
-    
+
     # Strip microseconds and timezone suffixes from time
     if '.' in TIME:
         TIME = TIME.split('.')[0]
@@ -201,24 +203,43 @@ def _clean_filename_date(filename, date_str):
     Returns:
         str: The cleaned filename stem with date occurrences removed.
     """
-    # Remove the exact date string (ISO 8601 with T separator)
-    result = filename.replace(date_str, '')
+    # Remove the exact date string (ISO 8601 with T separator) - only first occurrence
+    result = filename.replace(date_str, '', 1)
 
-    # Remove just the date part (YYYY-MM-DD)
-    result = result.replace(date_str[:10], '')
+    # Check if there's a second date pattern following (double-date case)
+    import re
+    has_second_pattern = False
+    if result.startswith('_'):
+        after_underscore = result[1:]
+        if (re.match(r'^\d{4}-\d{2}-\d{2}T', after_underscore) or
+            re.match(r'^\d{4}-\d{2}-\d{2}_', after_underscore) or
+            re.match(r'^\d{8}T', after_underscore) or
+            re.match(r'^\d{8}_', after_underscore) or
+            re.match(r'^\d{8}', after_underscore)):
+            has_second_pattern = True
 
-    # Remove time part variations (HH:MM:SS with different separators)
-    time_part = date_str[11:]  # HH:MM:SS
-    for sep in ['-', ':', '_']:
-        result = result.replace(sep.join(time_part.split(':')), '')
+    if has_second_pattern:
+        # Double-date case: keep date + compact time, just remove the leading underscore
+        # After removing the first date_str, result is: _YYYY-MM-DDThhmmss_rest
+        # We just need to remove the leading _ to get YYYY-MM-DDThhmmss_rest
+        result = result[1:]
+    else:
+        # Single pattern case: remove date part, time variations, compact formats
+        # Remove just the date part (YYYY-MM-DD)
+        result = result.replace(date_str[:10], '')
 
-    # Remove compact format YYYYMMDD_HHMMSS if present
-    compact_date = date_str.replace('-', '')[:8] + '_' + time_part.replace(':', '')
-    result = result.replace(compact_date, '')
+        # Remove time part variations (HH:MM:SS with different separators)
+        time_part = date_str[11:]  # HH:MM:SS
+        for sep in ['-', ':', '_']:
+            result = result.replace(sep.join(time_part.split(':')), '')
 
-    # Also try with the compact format without underscore
-    compact_date2 = date_str.replace('-', '')[:8] + time_part.replace(':', '')
-    result = result.replace(compact_date2, '')
+        # Remove compact format YYYYMMDD_HHMMSS if present
+        compact_date = date_str.replace('-', '')[:8] + '_' + time_part.replace(':', '')
+        result = result.replace(compact_date, '')
+
+        # Also try with the compact format without underscore
+        compact_date2 = date_str.replace('-', '')[:8] + time_part.replace(':', '')
+        result = result.replace(compact_date2, '')
 
     # Remove double separators and fix common patterns
     for sep in ['-', '_']:
@@ -226,9 +247,29 @@ def _clean_filename_date(filename, date_str):
     result = result.replace('-_', '_')
     result = result.replace('_-', '_')
 
-    # Strip leading/trailing separators
+    # Strip leading/trailing separators, but only if what follows is NOT date-like
     while result.startswith(('-', '_')):
-        result = result[1:]
+        after = result[1:] if len(result) > 1 else ''
+        is_date_like = False
+        if re.match(r'^\d{4}-\d{2}-\d{2}', after):
+            is_date_like = True
+        elif re.match(r'^\d{4}-\d{2}-\d{2}T', after):
+            is_date_like = True
+        elif re.match(r'^\d{8}T', after):
+            is_date_like = True
+        elif re.match(r'^\d{8}_', after):
+            is_date_like = True
+        elif re.match(r'^\d{8}', after):
+            is_date_like = True
+        elif re.match(r'^T\d{6}', after):
+            is_date_like = True
+
+        if not is_date_like:
+            result = result[1:]
+        else:
+            break
+
+    # Strip trailing separators
     while result.endswith(('-', '_')):
         result = result[:-1]
 
@@ -288,17 +329,21 @@ def sortPhotos(paths, dryrun, verbose=False):
     if verbose:
         global DEBUG
         DEBUG = True
-    for PHOTO in Path().glob(paths):
+    for PHOTO in glob.glob(paths):
         DATETIME = _get_creation_date(PHOTO)
         if DATETIME is None:
             continue
 
+        if DEBUG:
+            print(DATETIME)
+
         PHOTO_PATH = Path(PHOTO)
+        FILE = PHOTO_PATH.name
         # Clean any existing date from the filename, then prepend the new date
-        clean_name = _clean_filename_date(PHOTO_PATH.name, DATETIME)
+        clean_name = _clean_filename_date(FILE, DATETIME)
         sep = '_' if clean_name else ''
 
-        newname = f"{DATETIME}{sep}{PHOTO_PATH.name}"
+        newname = str(PHOTO_PATH.parent / f"{DATETIME}{sep}{FILE}")
 
         # Normalize double separators
         for sep in ['-', '_']:
@@ -307,11 +352,11 @@ def sortPhotos(paths, dryrun, verbose=False):
         newname = newname.replace('_-', '_')
 
         if DEBUG:
-            print(newname,  PHOTO_PATH.name, ' \t')
-            # print('renaming ', PHOTO_PATH.name, ' to ', newname)
+            print('renaming ', PHOTO, ' to ', newname)
 
         if not dryrun:
-            PHOTO_PATH.rename(PHOTO_PATH.parent / newname)
+            PHOTO_PATH.rename(newname)
+
 
 def test_pairs_from_tsv(tsv_path='test_pairs.tsv'):
     """Test _clean_filename_date against all pairs in a TSV file.
