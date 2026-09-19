@@ -157,63 +157,73 @@ def _get_creation_date(PHOTO):
 
 
 def _clean_filename_date(filename, date_str, keep_compact=False):
-    """Remove existing date occurrences from filename stem."""
-    import re
-    try:
-        date_part = date_str[:10] # YYYY-MM-DD
-        time_part = date_str[11:] if len(date_str) > 10 else ''
-        compact_time = time_part.replace(':', '') # HHMMSS
-        date_only_compact = date_str.replace('-', '')[:8] # YYYYMMDD
-    except Exception:
-        return filename
+    """Remove existing date occurrences from filename stem.
 
-    patterns = [
-        re.escape(date_str),                                      # YYYY-MM-DDTHH:MM:SS
-        re.escape(date_part + 'T' + compact_time),              # YYYY-MM-DDThhmmss
-        re.escape(date_only_compact + 'T' + compact_time),      # YYYYMMDDThhmmss
-        re.escape(date_only_compact + '_' + compact_time),      # YYYYMMDD_hhmmss
-        re.escape(date_only_compact + compact_time),            # YYYYMMDDhhmmss
-        re.escape(date_part),                                   # YYYY-MM-DD
-        re.escape(date_only_compact),                           # YYYYMMDD
-        re.escape(time_part),                                   # HH:MM:SS
-        re.escape(compact_time),                                # hhmmss
-    ]
+    Removes any date-like prefix (ISO 8601, compact, etc.) regardless of whether
+    it matches the extracted date_str.
+    """
+    import re
+
+    # Generic patterns for date/time components
+    date_pattern = r'(\d{4}-\d{2}-\d{2}|\d{8})'
+    sep_pattern = r'[T_-]?'
+    time_pattern = r'(\d{2}[:_]?\d{2}[:_]?\d{2})'
+    full_date_pattern = f"^{date_pattern}{sep_pattern}{time_pattern}"
 
     result = filename
-    # Pass 1: Remove full date always
-    result = re.sub(r'^' + re.escape(date_str), '', result)
-    result = re.sub(r'[-_]' + re.escape(date_str), '', result)
 
-    if keep_compact:
-        return result.strip('-_')
+    # We only care about the date_str if we are in keep_compact mode
+    # and we want to preserve a compact date that matches the actual date.
+    # However, based on user feedback, the priority is to remove ANY existing date
+    # and replace it with the correct one.
 
-    # Pass 2: Remove all other date variants
+    # If keep_compact is True, the user wants to preserve a compact date.
+    # But only if it's a valid date. To avoid the "double date" issue when dates differ,
+    # we should first strip all date-like prefixes, and then if keep_compact is true,
+    # we will let the calling function handle the prepending.
+    # Actually, if keep_compact is True, the calling function prepends the compact date.
+    # So we should just clean everything.
+
     while True:
         original = result
-        for p in patterns:
-            if p:
-                result = re.sub(r'^' + p, '', result)
-                result = re.sub(r'[-_]' + p, '', result)
+        # 1. Remove full date-time patterns (e.g., 2026-09-01T22:10:48 or 20260901T221048)
+        result = re.sub(full_date_pattern, '', result)
+        # 2. Remove date-only patterns (e.g., 2026-09-01 or 20260901)
+        result = re.sub(r'^' + date_pattern, '', result)
+        result = re.sub(r'[-_]' + date_pattern, '', result)
+        # 3. Remove time-only patterns (e.g., 22:10:48 or 221048)
+        result = re.sub(r'^' + time_pattern, '', result)
+        result = re.sub(r'[-_]' + time_pattern, '', result)
+
         result = result.strip('-_')
         if result == original:
             break
+
     return result
 
 
 def get_movie_creation_date(fn):
-    """Extract the creation date from a movie file using ffprobe."""
+    """Extract the creation date from a movie file using ffprobe.
+
+    Tries the Apple-specific 'com.apple.quicktime.creationdate' tag first,
+    as it usually contains the actual capture date, then falls back to
+    the standard 'creation_time' tag.
+    """
     fn_str = str(fn)
-    try:
-        result = subprocess.run(
-            ['ffprobe', '-loglevel', 'quiet', '-show_format', '-i', fn_str],
-            capture_output=True, text=True
-        )
-        for line in result.stdout.splitlines():
-            if line[:18] == 'TAG:creation_time=':
-                datetime_str = line[18:]
-                return format_dateTime(datetime_str)
-    except Exception:
-        pass
+    tags = ['com.apple.quicktime.creationdate', 'creation_time']
+
+    for tag in tags:
+        try:
+            result = subprocess.run(
+                ['ffprobe', '-v', 'quiet', '-show_entries', f'format_tags={tag}',
+                 '-of', 'default=noprint_wrappers=1:nokey=1', '-i', fn_str],
+                capture_output=True, text=True
+            )
+            date_str = result.stdout.strip()
+            if date_str:
+                return format_dateTime(date_str)
+        except Exception:
+            continue
     return ''
 
 def sortPhotos(paths, dryrun, verbose=False, clean_mode=False, compact_mode=False):
@@ -230,15 +240,12 @@ def sortPhotos(paths, dryrun, verbose=False, clean_mode=False, compact_mode=Fals
         stem = PHOTO_PATH.stem
         suffix = PHOTO_PATH.suffix
 
-        # Clean any existing date from the filename stem
-        # If compact_mode is enabled, we preserve the compact date (as seen in test_pairs.tsv)
         clean_stem = _clean_filename_date(stem, DATETIME, keep_compact=compact_mode)
 
         if clean_mode:
             new_filename = clean_stem + suffix
         else:
             if compact_mode:
-                # Convert YYYY-MM-DDTHH:MM:SS to YYYY-MM-DDThhmmss
                 date_part = DATETIME[:10]
                 time_part = DATETIME[11:].replace(':', '')
                 fmt_date = f"{date_part}T{time_part}"
